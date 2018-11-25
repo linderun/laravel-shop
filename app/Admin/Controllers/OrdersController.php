@@ -59,7 +59,6 @@ class OrdersController extends Controller
             // 禁用删除和编辑按钮
             $actions->disableDelete();
             $actions->disableEdit();
-            $actions->disableView();
         });
 
         $grid->tools(function ($tools) {
@@ -70,5 +69,12 @@ class OrdersController extends Controller
         });
 
         return $grid;
+    }
+
+    public function show(Content $content, Order $order)
+    {
+        return $content
+            ->header('查看订单')
+            ->body(view('admin.orders.show', ['order' => $order]));
     }
 }
