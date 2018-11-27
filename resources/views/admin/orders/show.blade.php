@@ -47,7 +47,7 @@
             </tr>
             <!-- 订单发货开始 -->
             <!-- 如果订单未发货，展示发货表单 -->
-            @if($order->ship_status === \App\Models\Order::SHIP_STATUS_PENDING)
+            @if($order->ship_status === \App\Models\Order::SHIP_STATUS_PENDING && $order->refund_status !== \App\Models\Order::REFUND_STATUS_SUCCESS)
                 <tr>
                     <td colspan="4">
                         <form action="{{ route('admin.orders.ship', [$order->id]) }}" method="post" class="form-inline">
@@ -146,6 +146,40 @@
                             type : 'success'
                         }, function () {
                             // 用户点击 swal 上的 按钮时刷新页面
+                            location.reload();
+                        });
+                    }
+                });
+            });
+        });
+
+        // 同意按钮的点击事件
+        $('#btn-refund-agree').click(function () {
+            swal({
+                title            : '确认要将款项退还给用户？',
+                type             : 'warning',
+                showCancelButton : true,
+                closeOnConfirm   : false,
+                confirmButtonText: "确认",
+                cancelButtonText : "取消",
+            }, function (ret) {
+                // 用户点击取消，不做任何操作
+                if (!ret) {
+                    return;
+                }
+                $.ajax({
+                    url        : '{{ route('admin.orders.handle_refund', [$order->id]) }}',
+                    type       : 'POST',
+                    data       : JSON.stringify({
+                        agree : true, // 代表同意退款
+                        _token: LA.token,
+                    }),
+                    contentType: 'application/json',
+                    success    : function (data) {
+                        swal({
+                            title: '操作成功',
+                            type : 'success'
+                        }, function () {
                             location.reload();
                         });
                     }
