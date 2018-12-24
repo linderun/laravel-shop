@@ -7,6 +7,7 @@ use App\Models\Category;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\SearchBuilders\ProductSearchBuilder;
+use App\Services\ProductService;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 
@@ -82,10 +83,7 @@ class ProductsController extends Controller
         $productIds = collect($result['hits']['hits'])->pluck('_id')->all();
 
         // 通过 whereIn 方法从数据库中读取商品数据
-        $products = Product::query()
-            ->whereIn('id', $productIds)
-            ->orderByRaw(sprintf("FIND_IN_SET(id, '%s')", join(',', $productIds)))
-            ->get();
+        $products = Product::query()->byIds($productIds)->get();
 
         // 返回一个 LengthAwarePaginator 对象
         $pager = new LengthAwarePaginator($products, $result['hits']['total'], $perPage, $page, [
@@ -104,7 +102,7 @@ class ProductsController extends Controller
         ]);
     }
 
-    public function show(Product $product, Request $request)
+    public function show(Product $product, Request $request, ProductService $service)
     {
         // 判断商品是否已经上架，如果没有上架则抛出异常。
         if (!$product->on_sale) {
@@ -118,6 +116,9 @@ class ProductsController extends Controller
             $favored = boolval($user->favoriteProducts()->find($product->id));
         }
 
+        $similarProductIds = $service->getSimilarProductIds($product, 4);
+        $similarProducts   = Product::query()->byIds($similarProductIds)->get();
+
         $reviews = OrderItem::query()
             ->with(['order.user', 'productSku'])// 预先加载关联关系
             ->where('product_id', $product->id)
@@ -126,7 +127,7 @@ class ProductsController extends Controller
             ->limit(10)// 取出 10 条
             ->get();
 
-        return view('products.show', ['product' => $product, 'favored' => $favored, 'reviews' => $reviews]);
+        return view('products.show', ['product' => $product, 'favored' => $favored, 'reviews' => $reviews, 'similar' => $similarProducts,]);
     }
 
     public function favor(Product $product, Request $request)
